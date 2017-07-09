@@ -1,0 +1,24 @@
+{
+  "name": "cube-ts",
+  "version": "0.0.1",
+  "description": "Portable Package Manager for Linux. Rewritten in Typescript with love.",
+  "main": "main.ts",
+  "dependencies": {
+    "linebyline": "^1.3.0",
+    "promise-sequential": "^1.1.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/camicri/cube-ts.git"
+  },
+  "author": "Jake Capangpangan <camicrisystems@gmail.com>",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/camicri/cube-ts/issues"
+  },
+  "homepage": "https://github.com/camicri/cube-ts#readme"
+}
