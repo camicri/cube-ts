@@ -3,12 +3,9 @@ import * as path from "path";
 import * as readLine from "linebyline";
 import * as sequential from "promise-sequential";
 
-import {BaseManager} from "./base";
-import {Source} from "./sources";
-import {AptConstraint} from "./sources";
+import {Source, AptConstraint} from "./sources";
 import {Version} from "./version";
-import {Dependency} from "./dependency";
-import {DependencyItem} from "./dependency";
+import {DependencyManager, DependencyItem} from "./dependency";
 import {Project} from "./project"
 
 export class Package
@@ -16,11 +13,13 @@ export class Package
     name:string;
     version:string;
     installedVersion:string;
+    //TODO: Change status to enum
     status:number;
     seekStart:number;
     seekEnd:number;
     source:Source;
     filename:String;
+    section:String;
     forced:Boolean = false;
     reverseDepends:{[key:string]:DependencyItem};
 
@@ -39,8 +38,12 @@ export class Package
             for(let k of keys)
             {
                 if(!keyDict[k] && s.startsWith(k+":"))
+                {
                     keyDict[k] = s.split(/:(.+)/)[1].trim();
+                }
             }
+            if(keys.length === 1 && keyDict[keys[0]] !== undefined)
+                break;
         }
         
         fs.closeSync(fd);
@@ -59,6 +62,7 @@ export class RepositoryManager
     upgradablePackages:Array<string> = [];
     downloadedPackages:Array<string> = [];
     cleanupPackages:Array<string> = [];
+    sectionPackages:{[key:string]:Array<string>} = {};
 
     constructor(project:Project)
     {
@@ -80,11 +84,15 @@ export class RepositoryManager
     scanRepository(source:Source)
     {
         let filePath:string = path.join(this.project.listsPath, source.filename);
+        var that = this;
 
         console.log("Scanning %s", source.filename)
         
-        var that = this;
-
+        if(source.filename === "status")
+        {
+            this.reset();
+        }
+        
         return new Promise((resolve,reject)=>{
             if(!fs.existsSync(filePath))
             {
@@ -142,6 +150,7 @@ export class RepositoryManager
 
     addToAvailablePackages(pkg:Package)
     {
+        let repeated:Boolean = false;
         pkg.filename = pkg.source.url + pkg.filename;
 
         if(!this.availablePackages[pkg.name])
@@ -158,12 +167,27 @@ export class RepositoryManager
 
             if(Version.compare(this.availablePackages[pkg.name].version,pkg.version) === -1)
                 this.availablePackages[pkg.name] = pkg;
+            
+            repeated = true;
         }
 
-        if(pkg.getInfo(["Provides"])["Provides"])
+        let info:{[key:string]:string} = pkg.getInfo(["Provides","Section"]);
+
+        if(!repeated)
+        {    
+            info["Section"] = info["Section"].includes("/")?info["Section"].split("/")[1]:info["Section"];
+
+            if(this.sectionPackages[info["Section"]] === undefined)
+                this.sectionPackages[info["Section"]] = [];
+            
+            this.sectionPackages[info["Section"]].push(pkg.name);    
+        }
+        
+        if(info["Provides"])
         {
             this.addToProvidedPackages(pkg);
         }
+        
     }
 
     addToInstalledPackages(pkg)
@@ -291,7 +315,7 @@ export class RepositoryManager
 			if (depString.trim().length === 0)
 				continue;
 
-			depItemGroup = Dependency.getDependencyItemGroup(depString);
+			depItemGroup = DependencyManager.getDependencyItemGroup(depString);
 
 			for (var depItem of depItemGroup.and)
 			{
