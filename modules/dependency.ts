@@ -13,7 +13,7 @@ export class DependencyItem
 	}
 }
 
-export class Dependency
+export class DependencyManager
 {
     availablePackages:{[key:string]:Package} = {};
     installedPackages:{[key:string]:Package} = {};
@@ -28,11 +28,13 @@ export class Dependency
 
 	getDependencies(pkg:Package,dependencies:{[key:string]:Package})
 	{
-        let pkgDepends:string = pkg.getInfo("Depends");
-        let pkgPredepends:string = pkg.getInfo("Pre-Depends");
-        let pkgRecommends:string = pkg.getInfo("Recommends");
+		let pkgInfo:{[key:string]:string} = pkg.getInfo(["Depends","Pre-Depends","Recommends"])
+
+        let pkgDepends:string = pkgInfo["Depends"];
+        let pkgPredepends:string = pkgInfo["Pre-Depends"];
+        let pkgRecommends:string = pkgInfo["Recommends"];
         
-		let depString:string = (pkgDepends)?pkg.getInfo("Depends"):"";
+		let depString:string = (pkgDepends)?pkgDepends:"";
 
 		if (pkgPredepends && pkgPredepends !== "")
 			depString += (depString!==""?",":"") + pkgPredepends;
@@ -46,7 +48,7 @@ export class Dependency
 				dependencies[pkg.name] = pkg;
 		}
 
-		let depItemGroup = Dependency.getDependencyItemGroup(depString);
+		let depItemGroup = DependencyManager.getDependencyItemGroup(depString);
 
 		for (var depItemOrList of depItemGroup.or)
 		{
