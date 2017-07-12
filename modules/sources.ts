@@ -126,14 +126,14 @@ export class SourceManager
         this.project = project;
     }
 
-    public scanRepositories()
+    public scanSources()
     {
-        this.scanRepositoryLists();
-        this.scanRepositoryConstraints();
+        this.scanSourceLists();
+        this.scanSourceConstraints();
         this.sortSources();
     }
 
-    public scanRepositoryLists()
+    public scanSourceLists()
     {
         var sourcePathArray = fs.readdirSync(this.project.sourcesPath);
 
@@ -195,7 +195,7 @@ export class SourceManager
         }
     }
 
-    public scanRepositoryConstraints()
+    public scanSourceConstraints()
     {
         let constraintsPathArray:Array<string> = fs.readdirSync(this.project.sourcesPath);
             
