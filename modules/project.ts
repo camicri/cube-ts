@@ -1,13 +1,18 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as jsonFile from "jsonfile";
+import * as os from "os";
+import * as shell from "shelljs"
+import {Globals} from "./globals"
+
 
 export class ProjectInfo
 {
     /* Metadata */
     name:string;
     version:string;
-    hostName:string;
+    hostname:string;
+    username:string
     operatingSystem:string;
     distribution:string;
     codename:string;
@@ -23,26 +28,71 @@ export class ProjectManager
 {
     createProject(name:string, destinationPath:string):Project
     {
+        let info:ProjectInfo = this.generateProjectInformation(name);
+        let project:Project = new Project(info, path.join(destinationPath,name));
+        
+        this.createDirectories(project);
+        this.saveProject(project);
+        this.updateProjectFiles(project);
+
+        return this.openProject(path.join(destinationPath,name));
+    }
+
+    generateProjectInformation(name:string):ProjectInfo
+    {
         let info:ProjectInfo = new ProjectInfo();
 
         info.name = name;
-        info.version = "";
-        info.hostName = "";
-        info.operatingSystem = "";
-        info.distribution = "";
-        info.release = "";
-        info.upstreamDistribution = "";
-        info.upstreamCodename = "";
-        info.upstreamRelease = "";
-        info.architecture = "";
-        info.dateCreated = "";
+        info.version = Globals.application_version;
+        info.hostname = os.hostname();
+        info.operatingSystem = os.platform();
+        info.distribution = shell.exec("lsb_release -d").stdout.split(":")[1].trim();
+        info.codename = shell.exec("lsb_release -c").stdout.split(":")[1].trim();
+        info.release = shell.exec("lsb_release -r").stdout.split(":")[1].trim();
 
-        let project:Project = new Project(info, path.join(destinationPath,name));
+        if (fs.existsSync(Globals.upstream_lsb_release_path))
+        {
+            let dict:{[key:string]:string} = {};
+            
+            shell.cat(Globals.upstream_lsb_release_path).split("\n").forEach((s)=>{
+                let output:Array<string> = s.split("=");
+                if(output.length === 2)
+                    dict[output[0].trim()] = output[1].trim().replace(/\"/g,"");
+            });;
+            
+            info.upstreamDistribution = dict["DISTRIB_ID"];
+            info.upstreamCodename = dict["DISTRIB_CODENAME"];
+            info.upstreamRelease = dict["DISTRIB_RELEASE"];
+        }
 
-        this.createDirectories(project);
-        this.saveProject(project);
+        if(os.arch() == "x86")
+            info.architecture = "binary-i386";
+        else if(os.arch() == "x64")
+            info.architecture = "binary-amd64";
+            
+        info.dateCreated = new Date().toDateString()+" "+new Date().toTimeString();
 
-        return this.openProject(path.join(destinationPath,name));
+        return info;
+    }
+
+    updateProjectFiles(proj:Project, statusOnly:Boolean=false)
+    {
+        /* Update status file */
+        shell.exec("cp " + Globals.AptInformation.statusFilePath + " \"" + proj.listsPath + "\"");
+
+        if(!statusOnly)
+        {
+            /* Update lists */
+            shell.exec("cp " + path.join(Globals.AptInformation.listsDirectoryPath,"*_Packages") + " \"" + proj.listsPath + "\"");
+            
+            /* Update sources */
+            shell.exec("cp " + path.join(Globals.AptInformation.sourcesDirectoryPath,"*.list") + " \"" + proj.sourcesPath + "\"");
+            shell.exec("cp " + Globals.AptInformation.sourceFilePath + " \"" + proj.sourcesPath + "\""); 
+            
+            /* Update preferences */
+            shell.exec("cp " + path.join(Globals.AptInformation.preferencesDirectoryPath,"*") + " \"" + proj.sourcesPath + "\"");
+            shell.exec("cp " + Globals.AptInformation.preferencesDirectoryPath + " \"" + proj.sourcesPath + "\""); 
+        }
     }
 
     createDirectories(proj:Project)
