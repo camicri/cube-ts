@@ -117,13 +117,14 @@ export class SourceManager
 {
     sources:Array<Source> = [];
     sourcesKeys:Array<string> = [];
-    architecture:string = "binary-i386";
+    architecture:string;
     constraintArray:Array<AptConstraint> = [];
     project:Project;
 
     constructor(project:Project)
     {
         this.project = project;
+        this.architecture = project.projectInfo.architecture;
     }
 
     public scanSources()
@@ -165,6 +166,8 @@ export class SourceManager
                     line = line.split("#",2)[0];
 
                 line = line.replace("deb ", "").replace("\"","").trim();
+                /* TODO: What to do with [ ] parameters in source file? Ignoring them for now */
+                line = line.replace(/\[.*\]/g,"").trim();
                 line = line.replace("http://","").trim();
 
                 
